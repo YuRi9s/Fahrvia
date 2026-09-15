@@ -1,0 +1,11 @@
+ALTER TABLE "Category" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'ACTIVE' CHECK ("status" IN ('ACTIVE','INACTIVE'));
+ALTER TABLE "Category" ADD COLUMN "version" INTEGER NOT NULL DEFAULT 1;
+CREATE UNIQUE INDEX "Category_id_organizationId_key" ON "Category" ("id","organizationId");
+ALTER TABLE "Vehicle" ADD COLUMN "brandCategoryId" TEXT;
+ALTER TABLE "Vehicle" ADD COLUMN "providerCategoryId" TEXT;
+ALTER TABLE "Vehicle" ADD CONSTRAINT "Vehicle_brandCategoryId_organizationId_fkey" FOREIGN KEY ("brandCategoryId","organizationId") REFERENCES "Category" ("id","organizationId") ON DELETE RESTRICT;
+ALTER TABLE "Vehicle" ADD CONSTRAINT "Vehicle_providerCategoryId_organizationId_fkey" FOREIGN KEY ("providerCategoryId","organizationId") REFERENCES "Category" ("id","organizationId") ON DELETE RESTRICT;
+CREATE INDEX "Vehicle_brandCategoryId_idx" ON "Vehicle" ("brandCategoryId");
+CREATE INDEX "Vehicle_providerCategoryId_idx" ON "Vehicle" ("providerCategoryId");
+UPDATE "Vehicle" v SET "brandCategoryId"=c.id FROM "Category" c WHERE c."organizationId"=v."organizationId" AND c.type='BRAND' AND c.name=v.brand;
+UPDATE "Vehicle" v SET "providerCategoryId"=c.id FROM "Category" c WHERE c."organizationId"=v."organizationId" AND c.type='PROVIDER' AND c.name=v.provider AND v.ownership <> 'OWNED';

@@ -1,0 +1,78 @@
+{
+  "name": "fleet-platform",
+  "version": "0.1.20",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "prisma generate && npm run build:worker && next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run tests/integration.test.ts",
+    "test:e2e": "playwright test",
+    "db:generate": "prisma generate",
+    "db:migrate": "node --env-file=.env node_modules/prisma/build/index.js migrate deploy",
+    "db:seed": "node --env-file=.env --import tsx scripts/seed.ts",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "db:provision-driver": "node --env-file=.env --import tsx scripts/provision-driver.ts",
+    "test:unit": "vitest run tests/policy.test.ts tests/domain.test.ts tests/upload-policy.test.ts tests/score.test.ts",
+    "build:worker": "node scripts/build-score-worker.mjs",
+    "pretest": "npm run build:worker",
+    "predev": "npm run build:worker",
+    "jobs:expiry": "node --env-file=.env --import tsx scripts/notify-expiry.ts",
+    "jobs:stock": "node --env-file=.env --import tsx scripts/notify-stock.ts",
+    "jobs:reminders": "node --env-file=.env --import tsx scripts/notify-reminders.ts",
+    "deploy:check": "node --env-file=.env --import tsx scripts/deploy-check.ts",
+    "files:check": "node --env-file=.env --import tsx scripts/check-files.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1127.0",
+    "@aws-sdk/s3-request-presigner": "3.1127.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "@tabler/icons-react": "3.46.0",
+    "better-auth": "1.7.3",
+    "csv-parse": "7.0.2",
+    "fast-xml-parser": "5.11.1",
+    "fflate": "0.8.3",
+    "next": "16.3.4",
+    "pg": "8.23.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sharp": "0.35.4",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-socket": "0.2.11",
+    "@eslint/js": "10.0.1",
+    "@next/eslint-plugin-next": "16.3.4",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.13.3",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "eslint": "10.10.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.6",
+    "prisma": "7.10.0",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2"
+    },
+    "prisma": {
+      "mysql2": "3.24.4"
+    }
+  }
+}

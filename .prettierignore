@@ -1,0 +1,9 @@
+node_modules
+.next
+src/generated
+package-lock.json
+.data
+playwright-report
+test-results
+
+workers/score/lib

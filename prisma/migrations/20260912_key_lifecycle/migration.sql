@@ -1,0 +1,14 @@
+ALTER TABLE "VehicleKey" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'ACTIVE' CHECK ("status" IN ('ACTIVE','RETIRED'));
+ALTER TABLE "VehicleKey" ADD COLUMN "version" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "VehicleKey" ADD COLUMN "replacesKeyId" TEXT;
+CREATE UNIQUE INDEX "VehicleKey_id_organizationId_key" ON "VehicleKey" (id,"organizationId");
+CREATE UNIQUE INDEX "VehicleKey_replacesKeyId_key" ON "VehicleKey" ("replacesKeyId");
+ALTER TABLE "VehicleKey" ADD CONSTRAINT key_replacement_tenant FOREIGN KEY ("replacesKeyId","organizationId") REFERENCES "VehicleKey" (id,"organizationId");
+ALTER TABLE "VehicleKey" ADD CONSTRAINT retired_key_holder CHECK (status='ACTIVE' OR (location<>'DRIVER' AND "driverId" IS NULL));
+DROP INDEX "VehicleKey_vehicleId_slot_key";
+CREATE INDEX "VehicleKey_vehicleId_slot_idx" ON "VehicleKey" ("vehicleId",slot);
+CREATE UNIQUE INDEX one_active_key_per_slot ON "VehicleKey" ("vehicleId",slot) WHERE status='ACTIVE';
+ALTER TABLE "KeyCustody" ADD COLUMN "action" TEXT NOT NULL DEFAULT 'TRANSFER' CHECK (action IN ('CREATE','TRANSFER','RETIRE','REPLACE'));
+ALTER TABLE "KeyCustody" ADD COLUMN "reason" TEXT NOT NULL DEFAULT '';
+CREATE INDEX "KeyCustody_keyId_createdAt_idx" ON "KeyCustody" ("keyId","createdAt");
+CREATE TRIGGER immutable_key_custody BEFORE UPDATE OR DELETE ON "KeyCustody" FOR EACH ROW EXECUTE FUNCTION protect_audit();
