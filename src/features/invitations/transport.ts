@@ -1,3 +1,4 @@
+import { emailConfiguration, sendAuthEmail } from "../../server/email";
 import { AppError } from "../../server/policy";
 
 export function invitationTransport() {
@@ -14,18 +15,7 @@ export function invitationTransport() {
       503,
       "Einladungen benötigen in Produktion HTTPS und E-Mail-Versand.",
     );
-  const endpoint = process.env.AUTH_EMAIL_WEBHOOK_URL;
-  if (
-    !manual &&
-    (!endpoint ||
-      (process.env.NODE_ENV === "production" &&
-        (new URL(endpoint).protocol !== "https:" ||
-          !process.env.AUTH_EMAIL_WEBHOOK_TOKEN)))
-  )
-    throw new AppError(
-      503,
-      "Bitte den E-Mail-Versand konfigurieren. Für lokale Tests ist INVITATION_DELIVERY=manual möglich.",
-    );
+  const endpoint = manual ? undefined : emailConfiguration().endpoint;
   return {
     mode: manual ? ("MANUAL" as const) : ("EMAIL" as const),
     origin: url.origin,
@@ -48,25 +38,17 @@ export async function deliverInvitation(
   const url = `${config.origin}/invite#${token}`;
   if (config.mode === "MANUAL") return { delivery: "MANUAL", localLink: url };
   try {
-    const result = await fetch(config.endpoint!, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.AUTH_EMAIL_WEBHOOK_TOKEN ?? ""}`,
-      },
-      body: JSON.stringify({
-        to: invitation.email,
-        template: "staff-invitation",
-        url,
-        name: invitation.name,
-        organization,
-        role: invitation.role,
-        expiresAt: invitation.expiresAt.toISOString(),
-        invitationId: invitation.id,
-      }),
-      signal: AbortSignal.timeout(10000),
+    await sendAuthEmail({
+      to: invitation.email,
+      template: "staff-invitation",
+      url,
+      name: invitation.name,
+      organization,
+      role: invitation.role,
+      expiresAt: invitation.expiresAt.toISOString(),
+      invitationId: invitation.id,
     });
-    return { delivery: result.ok ? "SENT" : "FAILED" };
+    return { delivery: "SENT" };
   } catch {
     return { delivery: "FAILED" };
   }

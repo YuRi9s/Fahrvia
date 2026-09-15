@@ -6,7 +6,7 @@ import { AccountsPanel } from "./accounts-panel";
 import { InvitationsPanel } from "./invitations-panel";
 import { MessagesPanel } from "./messages-panel";
 import { allowed } from "@/server/policy";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   IconLayoutDashboard,
   IconUsers,
@@ -54,6 +54,14 @@ const icons = {
   accounts: IconUsers,
   audit: IconFiles,
 };
+function subscribeMobile(callback: () => void) {
+  const media = window.matchMedia("(max-width: 800px)");
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+function readMobile() {
+  return window.matchMedia("(max-width: 800px)").matches;
+}
 function readTheme() {
   return localStorage.getItem("fahriva-theme") === "dark";
 }
@@ -82,6 +90,49 @@ export function Workspace({
   initialQuery?: string;
 }) {
   const [menu, setMenu] = useState(false);
+  const mobile = useSyncExternalStore(subscribeMobile, readMobile, () => false);
+  const menuOpen = mobile && menu;
+  const sidebar = useRef<HTMLElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const panel = sidebar.current;
+    const trigger = menuButton.current;
+    if (!panel) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusable = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex="0"]',
+        ),
+      ).filter((element) => element.getClientRects().length > 0);
+    focusable()[0]?.focus();
+    function keydown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenu(false);
+      }
+      if (event.key === "Tab") {
+        const elements = focusable();
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    }
+    panel.addEventListener("keydown", keydown);
+    return () => {
+      panel.removeEventListener("keydown", keydown);
+      document.body.style.overflow = previousOverflow;
+      if (trigger?.getClientRects().length) trigger.focus();
+    };
+  }, [menuOpen]);
   const dark = useSyncExternalStore(subscribeTheme, readTheme, () => false);
   const [error, setError] = useState("");
   const isDriver = principal.role === "DRIVER";
@@ -115,11 +166,35 @@ export function Workspace({
         (key) => key !== "profile" && allowed(principal, key, "read"),
       );
   return (
-    <div className={`app-shell ${menu ? "menu-open" : ""}`}>
-      <Link className="skip-link" href="#main">
-        {de.modules.dashboard}
+    <div className={`app-shell ${menuOpen ? "menu-open" : ""}`}>
+      <Link
+        className="skip-link"
+        href="#main"
+        inert={menuOpen}
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("main")?.focus();
+        }}
+      >
+        Zum Hauptinhalt
       </Link>
-      <aside className="sidebar">
+      <aside
+        ref={sidebar}
+        id="workspace-navigation"
+        className="sidebar"
+        inert={mobile && !menuOpen}
+        role={menuOpen ? "dialog" : undefined}
+        aria-modal={menuOpen ? true : undefined}
+        aria-label={menuOpen ? "Navigation" : undefined}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("a")) setMenu(false);
+        }}
+      >
+        {menuOpen && (
+          <button className="mobile-nav-close" onClick={() => setMenu(false)}>
+            Menü schließen
+          </button>
+        )}
         <Link className="brand" href="/dashboard">
           <span className="logo-mark" aria-hidden="true">
             F
@@ -160,17 +235,24 @@ export function Workspace({
           <span>↗</span>
         </Link>
       </aside>
-      {menu && (
+      {menuOpen && (
         <button
           className="menu-backdrop"
+          tabIndex={-1}
+          aria-hidden="true"
           onClick={() => setMenu(false)}
           aria-label={de.close}
         />
       )}
-      <div className="main-column">
+      <div className="main-column" inert={menuOpen}>
         <header className="topbar">
           <button
+            ref={menuButton}
+            id="navigation-toggle"
             className="icon-button mobile-menu"
+            aria-expanded={menuOpen}
+            aria-controls="workspace-navigation"
+            aria-haspopup="dialog"
             onClick={() => setMenu(!menu)}
             aria-label={de.menu}
           >
@@ -215,7 +297,7 @@ export function Workspace({
             </details>
           </div>
         </header>
-        <main id="main">
+        <main id="main" tabIndex={-1}>
           <div className="page-heading">
             <div>
               <p className="eyebrow">{principal.organizationName}</p>
@@ -309,7 +391,11 @@ export function Workspace({
         </footer>
       </div>
       {isDriver && (
-        <nav className="bottom-nav">
+        <nav
+          className="bottom-nav"
+          aria-label="Schnellnavigation"
+          inert={menuOpen}
+        >
           {(["dashboard", "vehicles", "profile"] as const).map((key) => {
             const Icon = icons[key];
             return (
@@ -317,6 +403,7 @@ export function Workspace({
                 href={`/${key}`}
                 key={key}
                 className={module === key ? "active" : ""}
+                aria-current={module === key ? "page" : undefined}
               >
                 <Icon size={22} />
                 {de.modules[key]}

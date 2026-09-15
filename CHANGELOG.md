@@ -131,3 +131,17 @@ Added read-only source-deployment checks for runtime configuration, built files,
 ## 0.1.20 — Stage 20 preparation
 
 Enforced absolute scanner paths, distinguished detected threats (422) from scanner unavailability (503), and retained private temporary-file cleanup. Added subprocess/storage contract tests and an opt-in provider round-trip probe. Live scanner detection, bucket privacy and role-specific browser qualification remain open. No migration.
+
+## 0.1.21 — Stage 21
+
+- Share invitation and password-recovery transport with bounded requests and no redirects.
+- Validate endpoint configuration and canonical authentication-link origin; redact provider failures.
+- Add configuration-only email check and provider contract/acceptance instructions.
+- No migration. Live delivery and recovery qualification remains pending.
+
+## 0.1.22 — Stage 22
+
+- Add mobile drawer focus management, Escape/close controls, inert background, hidden closed navigation and expanded-state semantics.
+- Make the skip link focus the main content; label driver navigation and mark its current page.
+- Add disposable browser fixture and role, keyboard, reduced-motion and CSP checks.
+- No migration. Browser execution remains blocked by unavailable Chromium in the development workspace.

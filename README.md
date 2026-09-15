@@ -1,5 +1,9 @@
 # Fahriva
 
+Stage 22 (0.1.22) improves mobile navigation accessibility and adds `npm run test:e2e:local`. See `docs/STAGE-22.md` (or `STAGE-22.md` from this folder). Browser execution and deployment acceptance remain pending.
+
+Stage 21 (0.1.21) adds a shared invitation/recovery email transport, redirect rejection and `npm run email:check`. See `docs/STAGE-21.md` (or `STAGE-21.md` from this folder). Live provider and inbox qualification remains pending.
+
 A German fleet operations application built with React and Next.js, backed by PostgreSQL. The interface and server share typed contracts; business records live in the database, while only the theme preference uses browser storage.
 
 **Release status: 0.1.20, implementation checkpoint.** This is runnable application source. It is not yet the complete, production-certified Version 1.0 described in the master brief. Read `docs/RELEASE_STATUS.md` for implemented behavior and outstanding release gates.

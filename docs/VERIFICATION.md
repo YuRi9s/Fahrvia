@@ -1,5 +1,9 @@
 # Verification record
 
+Stage 22 (0.1.22) improves mobile navigation accessibility and adds `npm run test:e2e:local`. See `docs/STAGE-22.md` (or `STAGE-22.md` from this folder). Browser execution and deployment acceptance remain pending.
+
+Stage 21 (0.1.21) adds a shared invitation/recovery email transport, redirect rejection and `npm run email:check`. See `docs/STAGE-21.md` (or `STAGE-21.md` from this folder). Live provider and inbox qualification remains pending.
+
 For the current 0.1.20 handoff, see `STAGE-20-VERIFICATION.md`. The record below is retained as the original baseline.
 
 Checked 2026-09-08 against the delivered 0.1.0 source. This record distinguishes executed checks from specifications and infrastructure still awaiting verification.

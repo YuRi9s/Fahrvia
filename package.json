@@ -1,6 +1,6 @@
 {
   "name": "fleet-platform",
-  "version": "0.1.20",
+  "version": "0.1.22",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:integration": "vitest run tests/integration.test.ts",
+    "test:e2e:local": "npm run db:generate && npm run build:worker && playwright test --config playwright.local.config.ts",
     "test:e2e": "playwright test",
     "db:generate": "prisma generate",
     "db:migrate": "node --env-file=.env node_modules/prisma/build/index.js migrate deploy",
@@ -29,6 +30,7 @@
     "jobs:stock": "node --env-file=.env --import tsx scripts/notify-stock.ts",
     "jobs:reminders": "node --env-file=.env --import tsx scripts/notify-reminders.ts",
     "deploy:check": "node --env-file=.env --import tsx scripts/deploy-check.ts",
+    "email:check": "node --env-file=.env --import tsx scripts/check-email.ts",
     "files:check": "node --env-file=.env --import tsx scripts/check-files.ts"
   },
   "dependencies": {

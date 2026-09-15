@@ -1,5 +1,9 @@
 # Release status — 0.1.20
 
+Stage 22 (0.1.22) improves mobile navigation accessibility and adds `npm run test:e2e:local`. See `docs/STAGE-22.md` (or `STAGE-22.md` from this folder). Browser execution and deployment acceptance remain pending.
+
+Stage 21 (0.1.21) adds a shared invitation/recovery email transport, redirect rejection and `npm run email:check`. See `docs/STAGE-21.md` (or `STAGE-21.md` from this folder). Live provider and inbox qualification remains pending.
+
 This is an implementation checkpoint, not the complete production Version 1.0 requested in the master brief. The code is an operational React/Next.js application with database-backed workflows. No live deployment or production credentials are included.
 
 Stage 1 adds searchable, paginated driver/vehicle/recipient selectors and reduced-motion-aware form transitions. See `STAGE-01.md` for user acceptance and `STAGES.md` for the sequenced backlog. Stage 1 was handed off before proceeding to Stage 2; no detailed browser test results were supplied.

@@ -875,11 +875,13 @@ details {
 }
 @media (max-width: 800px) {
   .sidebar {
+    visibility: hidden;
     transform: translateX(-100%);
     transition: transform 0.18s;
     width: 242px;
   }
   .menu-open .sidebar {
+    visibility: visible;
     transform: translateX(0);
   }
   .menu-backdrop {
@@ -1752,4 +1754,9 @@ input[readonly] {
   .table-sort:active {
     opacity: 0.65;
   }
+}
+
+.mobile-nav-close {
+  align-self: flex-end;
+  margin-bottom: 16px;
 }

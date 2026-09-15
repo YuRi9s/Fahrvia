@@ -1,3 +1,4 @@
+import { sendAuthEmail } from "./email";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { twoFactor } from "better-auth/plugins";
@@ -30,28 +31,11 @@ function createAuth() {
       minPasswordLength: 12,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url: resetUrl }) => {
-        const endpoint = process.env.AUTH_EMAIL_WEBHOOK_URL;
-        if (!endpoint) throw new Error("Email transport is not configured");
-        if (
-          process.env.NODE_ENV === "production" &&
-          (new URL(endpoint).protocol !== "https:" ||
-            !process.env.AUTH_EMAIL_WEBHOOK_TOKEN)
-        )
-          throw new Error("Private HTTPS email transport is required");
-        const result = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.AUTH_EMAIL_WEBHOOK_TOKEN ?? ""}`,
-          },
-          body: JSON.stringify({
-            to: user.email,
-            template: "password-reset",
-            url: resetUrl,
-          }),
-          signal: AbortSignal.timeout(10000),
+        await sendAuthEmail({
+          to: user.email,
+          template: "password-reset",
+          url: resetUrl,
         });
-        if (!result.ok) throw new Error("Email transport failed");
       },
     },
     databaseHooks: {

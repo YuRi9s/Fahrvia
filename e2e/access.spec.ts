@@ -33,3 +33,47 @@ test("login respects the viewport and keyboard focus", async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test("login HTTP response has a fresh CSP nonce and framing protection", async ({
+  request,
+}) => {
+  const first = await request.get("/login");
+  const second = await request.get("/login");
+  expect(first.status()).toBe(200);
+  const csp = first.headers()["content-security-policy"];
+  expect(csp).toContain("frame-ancestors 'none'");
+  expect(csp).toContain("'strict-dynamic'");
+  expect(csp).not.toContain("'unsafe-inline'");
+  const nonce = csp.match(/'nonce-([^']+)'/)?.[1];
+  expect(nonce).toBeTruthy();
+  expect(second.headers()["content-security-policy"]).not.toContain(
+    `'nonce-${nonce}'`,
+  );
+  expect(first.headers()["x-content-type-options"]).toBe("nosniff");
+});
+
+test("login hydrates without script errors or CSP violations", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    const target = window as typeof window & { cspViolations: string[] };
+    target.cspViolations = [];
+    document.addEventListener("securitypolicyviolation", (event) => {
+      target.cspViolations.push(event.violatedDirective);
+    });
+  });
+  await page.goto("/login");
+  await page
+    .getByRole("button", { name: "Passwort vergessen?", exact: true })
+    .click();
+  await expect(page.getByLabel("Passwort", { exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as typeof window & { cspViolations: string[] }).cspViolations,
+    ),
+  ).toEqual([]);
+});
