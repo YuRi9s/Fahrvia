@@ -18,7 +18,12 @@ export async function POST(
     await mutationLimit(p);
     const body = await jsonBody(request);
     return response(
-      await changeScoreImport(p, (await params).id, body?.action),
+      await changeScoreImport(
+        p,
+        (await params).id,
+        body?.action,
+        body?.confirmReplacement,
+      ),
     );
   } catch (e) {
     return failure(e);

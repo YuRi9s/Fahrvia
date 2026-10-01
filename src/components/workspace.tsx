@@ -1,5 +1,8 @@
 "use client";
 import Link from "next/link";
+import { VehicleInspections } from "./vehicle-inspections";
+import { AdminWorkTimes } from "./time-corrections";
+import { DriverWorkTimes } from "./shift-clock";
 import { AuditPanel } from "./audit-panel";
 import { AssignmentBoard } from "./assignment-board";
 import { AccountsPanel } from "./accounts-panel";
@@ -353,6 +356,31 @@ export function Workspace({
               initialData={initialData}
               initialQuery={initialQuery}
             />
+          ) : module === "work-times" && isDriver ? (
+            <DriverWorkTimes
+              userId={principal.userId}
+              driverId={principal.driverId!}
+              initialData={initialData}
+              initialQuery={initialQuery}
+            />
+          ) : module === "work-times" &&
+            ["ADMIN", "SUPER_ADMIN"].includes(principal.role) ? (
+            <AdminWorkTimes
+              initialData={initialData}
+              initialQuery={initialQuery}
+            />
+          ) : module === "photos" ? (
+            <>
+              <VehicleInspections driver={isDriver} />
+              <ModuleTable
+                module="photos"
+                initialData={initialData}
+                initialQuery={initialQuery}
+                isDriver={isDriver}
+                isAdmin={["ADMIN", "SUPER_ADMIN"].includes(principal.role)}
+                ownDriverId={principal.driverId ?? undefined}
+              />
+            </>
           ) : module === "audit" ? (
             <AuditPanel
               key={initialQuery}

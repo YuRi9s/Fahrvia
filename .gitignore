@@ -11,3 +11,9 @@ test-results/
 *.tsbuildinfo
 workers/score/lib/
 src/generated/
+
+# Private local orchestration and database backups
+.local-db/
+backups/
+*.dump
+*.dump.json

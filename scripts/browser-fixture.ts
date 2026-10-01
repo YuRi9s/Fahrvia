@@ -59,6 +59,27 @@ for (const role of ["ADMIN", "DISPATCHER", "DRIVER"] as const) {
       },
     });
 }
+await db.vehicle.create({
+  data: {
+    id: "browser-inspection-vehicle",
+    organizationId: "browser-org",
+    plate: "TEST-22C",
+    vin: "BROWSER22C",
+    brand: "Test",
+    model: "Van",
+    year: 2025,
+    ownership: "OWNED",
+    inFleet: new Date("2025-01-01"),
+  },
+});
+await db.vehicleAssignment.create({
+  data: {
+    organizationId: "browser-org",
+    vehicleId: "browser-inspection-vehicle",
+    driverId: "browser-driver",
+    createdBy: "admin",
+  },
+});
 await db.$disconnect();
 const app = spawn(
   process.execPath,
@@ -75,6 +96,8 @@ const app = spawn(
     env: {
       ...process.env,
       NODE_ENV: "development",
+      S3_BUCKET: "",
+      S3_ENDPOINT: "",
       BETTER_AUTH_URL: "http://127.0.0.1:3100",
       BETTER_AUTH_SECRET: randomBytes(48).toString("hex"),
       AUTH_EMAIL_WEBHOOK_URL: "",

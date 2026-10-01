@@ -176,6 +176,8 @@ model VehicleServicePeriod {
   endAt DateTime? @db.Date
 }
 model VehicleAssignment {
+  inspections VehicleInspection[]
+  @@unique([id,organizationId,driverId,vehicleId])
   id String @id @default(uuid())
   organizationId String
   vehicleId String
@@ -219,6 +221,7 @@ model KeyCustody {
   @@index([keyId,createdAt])
 }
 model StoredObject {
+  timeEvidence WorkTimeCorrection[]
   id String @id @default(uuid())
   organizationId String
   key String @unique
@@ -235,6 +238,8 @@ model StoredObject {
   @@index([organizationId])
 }
 model VehiclePhotoReport {
+  inspection VehicleInspection?
+  @@unique([id,organizationId,vehicleId,reporterId])
   id String @id @default(uuid())
   organizationId String
   vehicleId String
@@ -249,6 +254,8 @@ model VehiclePhotoReport {
   @@index([organizationId,createdAt])
 }
 model VehiclePhoto {
+  position String?
+  @@unique([reportId,position])
   id String @id @default(uuid())
   reportId String
   report VehiclePhotoReport @relation(fields:[reportId],references:[id])
@@ -271,6 +278,7 @@ model Document {
   @@index([organizationId,expiresAt])
 }
 model ScoreImport {
+  selection Json?
   sourceKey String?
   sourceHash String?
   id String @id @default(uuid())
@@ -358,6 +366,13 @@ model Wave {
   @@unique([id,organizationId])
 }
 model WorkTimeEntry {
+  inspections VehicleInspection[]
+  corrections WorkTimeCorrection[]
+  @@unique([id,organizationId,driverId])
+  clockState String?
+  breakStartedAt DateTime?
+  breakMilliseconds BigInt @default(0)
+  clockEvents WorkTimeClockEvent[]
   version Int @default(1)
   id String @id @default(uuid())
   organizationId String
@@ -543,4 +558,71 @@ model InventoryCustody {
   @@unique([organizationId,requestId])
   @@unique([id,itemId])
   @@index([organizationId,itemId,issuedAt])
+}
+
+model WorkTimeClockEvent {
+  id String @id @default(uuid())
+  entryId String
+  entry WorkTimeEntry @relation(fields:[entryId],references:[id],onDelete:Restrict)
+  actorId String
+  requestId String
+  action String
+  expectedVersion Int?
+  requestedEntryId String?
+  occurredAt DateTime
+  @@unique([actorId,requestId])
+  @@index([entryId,occurredAt])
+}
+
+model WorkTimeCorrection {
+  id String @id
+  entryId String
+  organizationId String
+  driverId String
+  entry WorkTimeEntry @relation(fields:[entryId,organizationId,driverId],references:[id,organizationId,driverId],onDelete:Restrict)
+  requestedBy String
+  expectedVersion Int
+  fingerprint String
+  before Json
+  startAt DateTime
+  endAt DateTime
+  breakMilliseconds BigInt
+  reason String
+  evidenceDocumentId String?
+  evidenceObjectId String?
+  evidence StoredObject? @relation(fields:[evidenceObjectId],references:[id],onDelete:Restrict)
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  reviewedBy String?
+  reviewedAt DateTime?
+  decisionReason String?
+  decisionId String?
+  after Json?
+  @@unique([reviewedBy,decisionId])
+  @@index([organizationId,driverId,createdAt])
+  @@index([organizationId,status,createdAt])
+}
+
+model VehicleInspection {
+  @@unique([reportId,organizationId,vehicleId,reporterId])
+  id String @id
+  organizationId String
+  driverId String
+  reporterId String
+  vehicleId String
+  entryId String
+  entry WorkTimeEntry @relation(fields:[entryId,organizationId,driverId],references:[id,organizationId,driverId],onDelete:Restrict)
+  assignmentId String
+  assignment VehicleAssignment @relation(fields:[assignmentId,organizationId,driverId,vehicleId],references:[id,organizationId,driverId,vehicleId],onDelete:Restrict)
+  reportId String @unique
+  report VehiclePhotoReport @relation(fields:[reportId,organizationId,vehicleId,reporterId],references:[id,organizationId,vehicleId,reporterId],onDelete:Restrict)
+  fingerprint String
+  odometerKm Int
+  tyres String
+  lights String
+  mirrors String
+  warnings String
+  createdAt DateTime @default(now())
+  @@unique([entryId,assignmentId])
+  @@index([organizationId,driverId,createdAt])
 }

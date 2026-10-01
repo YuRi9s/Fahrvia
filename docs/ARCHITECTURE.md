@@ -90,3 +90,8 @@ All stages contribute to v1.0.0. Passing stage 2 is not a completed v1.0.0. Scre
 Proposed deployment: TLS reverse proxy/platform, Node app, PostgreSQL, private object storage, job runner and email provider. Separate application and migration database roles. Use forward migrations with backups and tested recovery; destructive downgrades are not the default rollback strategy.
 
 Expose integration boundaries for storage, email, monitoring, import mappings and notification delivery. Add score metrics through versioned metric definitions. Add permissions through centralized policy plus matrix tests. Add languages through dictionaries and locale formatting. No generic plugin execution engine is needed.
+
+
+## Stage 22C inspection boundary
+
+`features/inspections/service.ts` owns atomic inspection submission and scoped reads. VehicleInspection references the owning shift, assignment and existing VehiclePhotoReport through scoped keys. Labelled VehiclePhoto links reuse private StoredObject storage. Evidence is created before the inspection row; SQL triggers validate completeness and then freeze report content, photo links and stored-object metadata. The original shift events remain untouched. The server locks entry → vehicle → driver → membership and rechecks assignment after image storage. Transaction uncertainty retains bytes for reconciliation rather than risking deletion of committed evidence. See STAGE-22C.md for operational limits.

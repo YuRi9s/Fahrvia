@@ -20,6 +20,7 @@ import { EntityDialog } from "./entity-dialog";
 import { PlanningCalendar } from "./planning-calendar";
 import { DeliveryPanel } from "./delivery-panel";
 import { isoWeek } from "@/server/validation";
+import { ScoreExport } from "./score-import";
 import { DriverScore, ScoreImport, DeliveryBrowser } from "./score-panel";
 export function ModuleTable({
   module,
@@ -144,7 +145,7 @@ export function ModuleTable({
   if (!config) return <p className="alert">{de.unavailable}</p>;
   const editable =
     !isDriver &&
-    (module !== "categories" || isAdmin) &&
+    (!["categories", "work-times"].includes(module) || isAdmin) &&
     config.fields.length > 0 &&
     !["assignments", "messages"].includes(module);
   return (
@@ -394,7 +395,9 @@ export function ModuleTable({
           )}
           {config.create &&
             ((!isDriver &&
-              (!["drivers", "vehicles", "categories"].includes(module) ||
+              (!["drivers", "vehicles", "categories", "work-times"].includes(
+                module,
+              ) ||
                 isAdmin)) ||
               module === "messages") && (
               <button
@@ -413,6 +416,17 @@ export function ModuleTable({
             >
               + {de.upload}
             </button>
+          )}
+          {module === "score" && (
+            <ScoreExport
+              query={new URLSearchParams({
+                week,
+                q: query,
+                status,
+                sort,
+                dir: direction,
+              }).toString()}
+            />
           )}
           {module === "reports" && (
             <a
@@ -613,17 +627,19 @@ export function ModuleTable({
                           )}
                         </>
                       )}
-                      {editable && !["keys", "waves"].includes(module) && (
-                        <button
-                          onClick={() =>
-                            module === "categories"
-                              ? setCategoryDialog({ row, action: "update" })
-                              : setDialog({ row })
-                          }
-                        >
-                          {de.edit}
-                        </button>
-                      )}
+                      {editable &&
+                        !["keys", "waves"].includes(module) &&
+                        !(module === "work-times" && row.clockState) && (
+                          <button
+                            onClick={() =>
+                              module === "categories"
+                                ? setCategoryDialog({ row, action: "update" })
+                                : setDialog({ row })
+                            }
+                          >
+                            {de.edit}
+                          </button>
+                        )}
                       {!isDriver && module === "keys" && (
                         <>
                           <button

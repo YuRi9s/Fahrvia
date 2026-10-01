@@ -1,0 +1,13 @@
+# Stage 22C inspection design
+
+Continue the approved staged delivery from v0.1.24. Provide a driver inspection inside Arbeitszeiten after starting a shift, with history inside Fotos for employees and administrators/dispatchers. Keep time controls usable even when inspection fails, is incomplete or reports damage. No inspection time is deducted.
+
+Choose atomic submission instead of a draft upload subsystem: one bounded multipart request carries immutable metadata and four required JPEG/PNG views (front, rear, left, right), plus one required damage image when damage is declared. Limit the complete request to the existing 25 MiB cap and each image to 10 MiB. The latest draft is kept in tab memory across client-side navigation; warn before document unload while the dirty form is mounted. Camera capture is a browser hint, not evidence of freshness. Re-encode through the existing image validation pipeline and strip metadata. Reject identical view bytes; this is not photographic fraud detection.
+
+Capture odometer (0–9,999,999 km), tyres/lights/mirrors/warnings checklist (OK or ISSUE), damage boolean and notes; require descriptive notes for any issue. Report submission is not roadworthiness clearance. Issues prompt contact with dispatch. Formal damage triage and operational restrictions remain Stage 22D.
+
+Associate each inspection with a clock entry, assignment and existing private VehiclePhotoReport. One report per shift/assignment; a vehicle switch requires another inspection. A fresh transaction locks entry, vehicle, driver, then membership, rechecks live role/profile, running (not paused) shift, current assignment and active vehicle. Preserve original clock events. Append-only inspection and photo evidence constraints retain the record; existing report resolution can change only resolution metadata. Server-origin createdAt records receipt, not camera time.
+
+Idempotency uses a client UUID plus SHA-256 of canonical metadata and original image bytes. Exact retry returns the original receipt even if the shift/assignment subsequently ended; changed content conflicts. Recheck membership before replay. Uploaded files from a failed transaction are removed best-effort; committed files remain on ambiguous failure and an exact retry resolves it. No automatic offline queue.
+
+Readers receive only their organization's data; drivers only their own profile and reporter identity. Staff see operational reports without work-time details. Private downloads reuse the existing owner/report authorization. No credentials, CSP, grants, historical migrations or unrelated UI behavior change. Node >=24.19.0 <25; no new dependencies.

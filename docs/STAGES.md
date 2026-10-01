@@ -65,3 +65,18 @@ Validate the detailed behavior with the user before each delivery. These are pro
 | 39    | Vehicle return evidence pack              | Export a coherent condition and history package                              |
 
 Source formats for stages 14–15 must come from representative, preferably anonymized workbooks. Live-service credentials and deployment access will be needed for the relevant qualification stages. Nothing in this roadmap authorizes sending invitations or messages to real people during development.
+
+## Inserted employee workflows
+
+The user approved these additions after Stage 22. They do not replace the original Stage 23 concurrency gate.
+
+| Stage | Delivery                                               | Status                                                 |
+| ----- | ------------------------------------------------------ | ------------------------------------------------------ |
+| 22A   | Driver start/break/resume/finish and private history   | Implemented in 0.1.23; user/browser acceptance pending |
+| 22B   | Correction requests, evidence and administrator review | Implemented in 0.1.24; user/browser acceptance pending |
+| 22C   | Guided vehicle inspection and required photos          | Implemented in 0.1.25; user/browser acceptance pending |
+| 22D   | Damage review, restrictions and resolution             | Planned                                                |
+
+The earlier 23 outstanding qualification/deferred/optional stages remain open; these four additions make 27 items awaiting implementation or acceptance. Delivery of source alone does not close an acceptance gate.
+
+Stage 14A resumes part of deferred Stage 14 in v0.1.26: score workbook mapping and Excel export. Provider-specific definitions/calculations remain unvalidated. Stage 15 PHR/concessions ingestion follows separately after user testing; Stage 16 remains previously implemented.

@@ -1,0 +1,44 @@
+# Stage 22B release files
+
+Files added or changed relative to v0.1.23, including the integrated database tooling. Generated output, dependencies, local configuration and credentials are excluded.
+
+- `.dockerignore`
+- `.env.example`
+- `.gitignore`
+- `CHANGELOG.md`
+- `README.md`
+- `compose.yaml`
+- `docs/API.md`
+- `docs/LOCAL-DATABASE-VERIFICATION.md`
+- `docs/LOCAL-DATABASE.md`
+- `docs/RELEASE_STATUS.md`
+- `docs/STAGE-22B-VERIFICATION.md`
+- `docs/STAGE-22B.md`
+- `docs/STAGES.md`
+- `docs/VERIFICATION.md`
+- `e2e/workspace.spec.ts`
+- `package-lock.json`
+- `package.json`
+- `prisma/migrations/20260922_time_corrections/migration.sql`
+- `prisma/schema.prisma`
+- `scripts/local-cli.mjs`
+- `scripts/local/admin.mjs`
+- `scripts/local/backup.mjs`
+- `scripts/local/config.mjs`
+- `scripts/local/core.mjs`
+- `scripts/local/database.mjs`
+- `scripts/local/process.mjs`
+- `scripts/local/prompt.mjs`
+- `src/app/api/v1/time-corrections/route.ts`
+- `src/app/globals.css`
+- `src/components/shift-clock.tsx`
+- `src/components/time-corrections.tsx`
+- `src/components/workspace.tsx`
+- `src/features/operations/service.ts`
+- `src/features/uploads/service.ts`
+- `src/features/work-time/corrections.ts`
+- `tests/local/config.test.mjs`
+- `tests/local/core.test.mjs`
+- `tests/local/docker.acceptance.mjs`
+- `tests/time-corrections.test.ts`
+- `docs/STAGE-22B-FILES.md`

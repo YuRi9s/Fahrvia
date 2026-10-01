@@ -1,3 +1,4 @@
+import { scoreQuery } from "../features/score/query";
 import { parseListOptions } from "./list-options";
 import { investigate } from "../features/audit/service";
 import { notificationScope } from "../features/notifications/service";
@@ -344,12 +345,17 @@ export async function listModule(
         driverName: driverName(r.driver),
         startAt: r.startAt,
         endAt: r.endAt,
-        breakMinutes: r.breakMinutes,
+        breakMinutes: r.clockState
+          ? Math.round(Number(r.breakMilliseconds) / 600) / 100
+          : r.breakMinutes,
+        clockState: r.clockState,
         version: r.version,
         totalHours: r.endAt
           ? Math.round(
               ((r.endAt.getTime() - r.startAt.getTime()) / 3600000 -
-                r.breakMinutes / 60) *
+                (r.clockState
+                  ? Number(r.breakMilliseconds) / 3600000
+                  : r.breakMinutes / 60)) *
                 100,
             ) / 100
           : null,
@@ -409,23 +415,7 @@ export async function listModule(
   }
   if (module === "score") {
     const week = checkWeek(params.get("week") ?? isoWeek(new Date()));
-    const where = {
-      organizationId,
-      week,
-      ...(status ? { status } : {}),
-      source: { status: "COMMITTED" },
-      ...(own ? { driverId: p.driverId! } : {}),
-      ...(q
-        ? {
-            driver: {
-              OR: [
-                { firstName: { contains: q, mode: "insensitive" as const } },
-                { lastName: { contains: q, mode: "insensitive" as const } },
-              ],
-            },
-          }
-        : {}),
-    };
+    const { where } = scoreQuery(p, params);
     const [rows, total] = await Promise.all([
       db.driverScore.findMany({
         where,
@@ -780,7 +770,14 @@ export async function listModule(
     const until = range?.end ?? new Date();
     const time = await db.workTimeEntry.findMany({
       where: { organizationId, startAt: { gte: since, lt: until } },
-      select: { startAt: true, endAt: true, breakMinutes: true, status: true },
+      select: {
+        startAt: true,
+        endAt: true,
+        breakMinutes: true,
+        breakMilliseconds: true,
+        clockState: true,
+        status: true,
+      },
     });
     const hours = time.reduce(
       (sum, r) =>
@@ -789,7 +786,9 @@ export async function listModule(
           ? Math.max(
               0,
               (r.endAt.getTime() - r.startAt.getTime()) / 3600000 -
-                r.breakMinutes / 60,
+                (r.clockState
+                  ? Number(r.breakMilliseconds) / 3600000
+                  : r.breakMinutes / 60),
             )
           : 0),
       0,

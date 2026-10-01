@@ -34,6 +34,8 @@ export async function scoreHistory(p: Principal) {
         createdAt: true,
         committedAt: true,
         previousId: true,
+        mapping: true,
+        selection: true,
       },
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -42,6 +44,7 @@ export async function scoreHistory(p: Principal) {
 }
 export async function previewScore(p: Principal, form: FormData) {
   demand(p, "score-imports", "write");
+  await authorize(database(), p);
   const file = form.get("file");
   if (!(file instanceof File))
     throw new AppError(422, "Bitte eine Datei auswählen.");
@@ -79,7 +82,28 @@ export async function previewScore(p: Principal, form: FormData) {
   const driverNames = Object.fromEntries(
     drivers.map((d) => [d.id, `${d.firstName} ${d.lastName}`]),
   );
-  const preview = await parseIsolated(data, file.name, week, mapping, drivers);
+  const selection = {
+    sheet: String(form.get("sheet") ?? "") || undefined,
+    headerRow: Number(form.get("headerRow") ?? 1),
+    inspect: form.get("inspect") === "true",
+  };
+  const preview = await parseIsolated(
+    data,
+    file.name,
+    week,
+    mapping,
+    drivers,
+    selection,
+  );
+  if (selection.inspect)
+    return { id: "", ...preview, driverNames: {}, replaces: null };
+  const sourceSelection = {
+    sheet: preview.sheet,
+    headerRow: preview.headerRow,
+  };
+  const matchedNames = Object.fromEntries(
+    preview.rows.map((r) => [r.driverId, driverNames[r.driverId]]),
+  );
   const hash = createHash("sha256")
     .update(
       JSON.stringify({
@@ -87,6 +111,7 @@ export async function previewScore(p: Principal, form: FormData) {
         rows: preview.rows,
         errors: preview.errors,
         mapping: preview.mapping,
+        selection: sourceSelection,
       }),
     )
     .digest("hex");
@@ -97,6 +122,17 @@ export async function previewScore(p: Principal, form: FormData) {
     const result = await database().$transaction(async (tx) => {
       await authorize(tx, p);
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${p.organizationId + ":score:" + week},0))`;
+      const current = await tx.scoreImport.findFirst({
+        where: { organizationId: p.organizationId, week, status: "COMMITTED" },
+        include: { _count: { select: { scores: true } } },
+      });
+      const replaces = current
+        ? {
+            id: current.id,
+            filename: current.filename,
+            count: current._count.scores,
+          }
+        : null;
       const duplicate = await tx.scoreImport.findFirst({
         where: {
           organizationId: p.organizationId,
@@ -105,10 +141,19 @@ export async function previewScore(p: Principal, form: FormData) {
           status: { in: ["DRAFT", "COMMITTED"] },
         },
       });
-      if (duplicate) {
+      if (
+        duplicate &&
+        (duplicate.status === "COMMITTED" ||
+          duplicate.previousId === (current?.id ?? null))
+      ) {
         if (duplicate.status === "COMMITTED")
           throw new AppError(409, "Diese Daten wurden bereits importiert.");
-        return { id: duplicate.id, ...preview, driverNames };
+        return {
+          id: duplicate.id,
+          ...preview,
+          driverNames: matchedNames,
+          replaces,
+        };
       }
       const item = await tx.scoreImport.create({
         data: {
@@ -119,6 +164,8 @@ export async function previewScore(p: Principal, form: FormData) {
           filename: file.name.replace(/[\x00-\x1f]/g, "").slice(0, 200),
           hash,
           mapping: preview.mapping,
+          selection: sourceSelection,
+          previousId: current?.id ?? null,
           rows: preview.rows as unknown as Prisma.InputJsonValue,
           errors: preview.errors,
           createdBy: p.userId,
@@ -126,7 +173,7 @@ export async function previewScore(p: Principal, form: FormData) {
       });
       await audit(tx, p, "preview", "score-import", item.id);
       created = true;
-      return { id: item.id, ...preview, driverNames };
+      return { id: item.id, ...preview, driverNames: matchedNames, replaces };
     });
     retained = created;
     return result;
@@ -138,6 +185,7 @@ export async function changeScoreImport(
   p: Principal,
   id: string,
   action: unknown,
+  confirmReplacement: unknown = false,
 ) {
   demand(p, "score-imports", "write");
   if (!["commit", "revert"].includes(String(action)) || !id || id.length > 100)
@@ -185,6 +233,16 @@ export async function changeScoreImport(
             status: "COMMITTED",
           },
         });
+        if ((current?.id ?? null) !== item.previousId)
+          throw new AppError(
+            409,
+            "Die aktive Wochenrevision hat sich geändert. Bitte erneut eine Vorschau erstellen.",
+          );
+        if (current && confirmReplacement !== true)
+          throw new AppError(
+            409,
+            "Bitte das Ersetzen der gesamten Wochenrevision ausdrücklich bestätigen.",
+          );
         if (current?.hash === item.hash)
           throw new AppError(409, "Diese Daten sind bereits aktiv.");
         if (current)

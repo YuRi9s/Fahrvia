@@ -1,10 +1,16 @@
 # Verification record
 
+Stage 22C (0.1.25): 265 application tests, 13 database-tooling tests and two authenticated HTTP inspection scenarios passed. Lint and production build passed. See `STAGE-22C-VERIFICATION.md`. Browser execution is blocked by unavailable Chromium; native Docker qualification remains pending.
+
+Stage 22B (0.1.24): 246 application tests, 13 local database orchestration tests and two authenticated HTTP scenarios passed. Lint and production build passed. See `STAGE-22B-VERIFICATION.md` for commands and limits.
+
+Stage 22A (0.1.23) adds driver shift controls, recorded breaks, idempotent commands and private history. New migration required. See `docs/STAGE-22A.md` (or `STAGE-22A.md` from this folder). Stage 22B now adds corrections; inspections follow separately.
+
 Stage 22 (0.1.22) improves mobile navigation accessibility and adds `npm run test:e2e:local`. See `docs/STAGE-22.md` (or `STAGE-22.md` from this folder). Browser execution and deployment acceptance remain pending.
 
 Stage 21 (0.1.21) adds a shared invitation/recovery email transport, redirect rejection and `npm run email:check`. See `docs/STAGE-21.md` (or `STAGE-21.md` from this folder). Live provider and inbox qualification remains pending.
 
-For the current 0.1.20 handoff, see `STAGE-20-VERIFICATION.md`. The record below is retained as the original baseline.
+For the historical 0.1.20 handoff, see `STAGE-20-VERIFICATION.md`. The record below is retained as the original baseline.
 
 Checked 2026-09-08 against the delivered 0.1.0 source. This record distinguishes executed checks from specifications and infrastructure still awaiting verification.
 

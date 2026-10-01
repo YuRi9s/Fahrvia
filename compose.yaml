@@ -1,18 +1,36 @@
+# Managed by npm run local:bootstrap. Do not reuse a legacy fleet volume here.
 services:
   postgres:
     image: postgres:18.6-bookworm
     environment:
-      POSTGRES_USER: fleet
-      POSTGRES_DB: fleet
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a private database password}
+      POSTGRES_USER: fahriva_bootstrap
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_bootstrap
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - postgres_bootstrap
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${LOCAL_DB_PORT:?Run npm run local:bootstrap}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fleet -d fleet"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-h",
+          "127.0.0.1",
+          "-U",
+          "fahriva_bootstrap",
+          "-d",
+          "postgres",
+        ]
+      interval: 2s
+      timeout: 3s
+      start_period: 10s
+      retries: 30
+secrets:
+  postgres_bootstrap:
+    file: ./.local-db/bootstrap-password
 volumes:
   postgres_data:

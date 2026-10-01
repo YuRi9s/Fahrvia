@@ -43,7 +43,7 @@ Traces can contain session cookies and test form data. Share the failure summary
 - Skip-link focus and reduced-motion drawer behaviour.
 - Administrator creation-dialog naming, focus and Escape dismissal, without creating records.
 
-`npm run test:e2e` retains the existing external-server mode. The new authenticated tests are skipped outside the disposable fixture because they must not guess or create production accounts. The full local suite contains 28 project/test combinations; an HTTP-only subset does not establish that browser interaction passed.
+`npm run test:e2e` retains the existing external-server mode. The new authenticated tests are skipped outside the disposable fixture because they must not guess or create production accounts. The full local suite contains 32 project/test combinations after Stage 22A; an HTTP-only subset does not establish that browser interaction passed.
 
 ## Deployment acceptance still required
 

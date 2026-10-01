@@ -1,4 +1,12 @@
+Stage 14A — **v0.1.26**: score worksheet/header selection, saved mappings, explicit weekly replacement and scoped Excel export. Apply the additive migration; see `docs/STAGE-14A.md`. Real-provider workbook and browser acceptance remain pending.
+
+Stage 22C — **v0.1.25**: guided vehicle inspections, required private photos and immutable report history. Apply the additive migration before running; see `docs/STAGE-22C.md`. Browser and native deployment qualification remain pending.
+
+Stage 22B — **v0.1.24**: employee time-correction requests, private document evidence and audited administrator decisions. Includes Stage 22A shift controls and the previously separate local database workflow. Apply the new migration; see `docs/STAGE-22B.md` (`STAGE-22B.md` from this folder). Native Docker/concurrency and browser acceptance remain pending.
+
 # Fahriva
+
+Stage 22A (0.1.23) adds driver shift controls, recorded breaks, idempotent commands and private history. New migration required. See `docs/STAGE-22A.md` (or `STAGE-22A.md` from this folder). Stage 22B now adds corrections; inspections follow separately.
 
 Stage 22 (0.1.22) improves mobile navigation accessibility and adds `npm run test:e2e:local`. See `docs/STAGE-22.md` (or `STAGE-22.md` from this folder). Browser execution and deployment acceptance remain pending.
 
@@ -6,21 +14,18 @@ Stage 21 (0.1.21) adds a shared invitation/recovery email transport, redirect re
 
 A German fleet operations application built with React and Next.js, backed by PostgreSQL. The interface and server share typed contracts; business records live in the database, while only the theme preference uses browser storage.
 
-**Release status: 0.1.20, implementation checkpoint.** This is runnable application source. It is not yet the complete, production-certified Version 1.0 described in the master brief. Read `docs/RELEASE_STATUS.md` for implemented behavior and outstanding release gates.
+**Release status: 0.1.26, implementation checkpoint.** This is runnable application source. It is not yet the complete, production-certified Version 1.0 described in the master brief. Read `docs/RELEASE_STATUS.md` for implemented behavior and outstanding release gates.
 
 ## Run locally
 
-Prerequisites: Node.js 24.20, npm, and PostgreSQL 18.6. Docker Compose can provide the database.
+For a fresh managed Docker installation (Node >=24.19.0 <25 and Docker Compose 2.20+):
 
-1. Copy `.env.example` to `.env`. Set the database URL, authentication URL and a strong random authentication secret. Use `node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"` to generate the secret locally.
-2. If using Compose, set `POSTGRES_PASSWORD` in your environment, then run `docker compose up -d postgres`. Use that same password in `DATABASE_URL`.
-3. Run `npm ci --ignore-scripts --omit=peer`, `npm run db:generate`, then `npm run db:migrate`.
-4. In `.env`, set `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (at least 16 characters), `SEED_ADMIN_NAME`, and `SEED_ORGANIZATION`. Run `npm run db:seed` once. Remove the bootstrap password afterward. The command refuses to overwrite an existing account.
-5. Run `npm run dev`. Open `http://localhost:3000`, sign in with the account you created, and enroll MFA under **Profil → Kontosicherheit**.
+```sh
+npm run local:bootstrap
+npm run local:dev
+```
 
-Production administrators must complete MFA. Development keeps enrollment available without requiring it, so local setup does not lock you out. Public registration is disabled. No universal password or sign-in bypass is included.
-
-Prisma 7 does not implicitly load `.env`; the migration and operator scripts explicitly load it with Node. `npm run build` needs no live database or production secrets.
+For an existing managed installation after updating source, preserve private configuration and run `npm run db:upgrade` before starting the app. It backs up and migrates using the separate migration identity. Existing unmanaged native installations must follow the transfer/explicit deployment guide; no `.env` is overwritten. See [local database operations](docs/LOCAL-DATABASE.md) and [Stage 22C](docs/STAGE-22C.md).
 
 ## Supported workflows
 

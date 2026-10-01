@@ -1,3 +1,25 @@
+# 0.1.26 — Stage 14A
+
+- Score CSV/XLSX worksheet/header selection, screenshot aliases, reusable import mappings and preview invalidation.
+- Explicit whole-week replacement consent and stale-predecessor protection.
+- Filtered, permission-scoped data-only XLSX export using existing dependencies.
+- Additive `20260925_score_selection` metadata migration; PHR/concessions remain separate.
+
+# 0.1.25 — Stage 22C
+
+- Guided shift-linked vehicle inspection with four required views and damage evidence.
+- Private role-scoped history, immutable evidence pointers and idempotent multipart submission.
+- Shared image normalization preserves existing upload policy; no new dependencies.
+- Additive migration `20260924_vehicle_inspections`; read the Stage 22C upgrade guide.
+
+# 0.1.24 — Stage 22B
+
+- Employee requests for completed-shift corrections with optional private document evidence.
+- Admin review, immutable decisions, before/after history and renewed work-time approval.
+- Tenant/own-record access checks, stale and overlapping-time rejection, safe retries and preserved original clock events.
+- Responsive comparison UI with reduced-motion support.
+- Integrates the local database workflow with Stage 22A; adds one migration without rewriting history.
+
 # Changelog
 
 ## 0.1.0 — 2026-09-08
@@ -145,3 +167,11 @@ Enforced absolute scanner paths, distinguished detected threats (422) from scann
 - Make the skip link focus the main content; label driver navigation and mark its current page.
 - Add disposable browser fixture and role, keyboard, reduced-motion and CSP checks.
 - No migration. Browser execution remains blocked by unavailable Chromium in the development workspace.
+
+## 0.1.23 — Stage 22A: driver shift controls
+
+- Add server-recorded start, pause, resume and finish transitions with durable state, exact break duration and private history.
+- Add mobile shift card, confirmation/retry states and reduced-motion-aware feedback.
+- Enforce live driver membership, stale-command protection, idempotency and append-only events.
+- Keep clock records protected from generic editing; restrict manual work-time writes to administrators.
+- Add migration 20260921_shift_clock. Correction requests and vehicle inspection remain subsequent deliveries.

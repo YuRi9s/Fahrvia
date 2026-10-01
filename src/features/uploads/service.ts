@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import { normalizeImage } from "./image";
 import { database } from "../../server/db";
 import { AppError, demand, type Principal } from "../../server/policy";
 import { validateUpload } from "./policy";
@@ -87,29 +87,7 @@ export async function upload(p: Principal, form: FormData) {
       let mime = file.type,
         filename = file.name;
       if (type === "image") {
-        const image = sharp(bytes, {
-          failOn: "warning",
-          limitInputPixels: 25000000,
-          pages: 1,
-        });
-        const meta = await image.metadata();
-        if (
-          !["jpeg", "png"].includes(meta.format ?? "") ||
-          (meta.pages ?? 1) > 1
-        )
-          throw new AppError(422, "Dieses Bildformat ist nicht erlaubt.");
-        bytes = new Uint8Array(
-          await image
-            .rotate()
-            .resize({
-              width: 2400,
-              height: 2400,
-              fit: "inside",
-              withoutEnlargement: true,
-            })
-            .jpeg({ quality: 85 })
-            .toBuffer(),
-        );
+        bytes = await normalizeImage(bytes);
         mime = "image/jpeg";
         filename = file.name.replace(/\.[^.]+$/, ".jpg");
       } else await scanPdf(bytes);
@@ -247,6 +225,10 @@ export async function download(p: Principal, id: string) {
         where: { organizationId: p.organizationId, archivedAt: null },
       },
       photos: { include: { report: true } },
+      timeEvidence: {
+        where: { organizationId: p.organizationId },
+        select: { driverId: true, requestedBy: true },
+      },
     },
   });
   if (!o) throw new AppError(404, "Datei nicht gefunden.");
@@ -256,6 +238,9 @@ export async function download(p: Principal, id: string) {
   let permitted = false;
   if (p.role === "DRIVER") {
     permitted =
+      o.timeEvidence.some(
+        (r) => r.driverId === p.driverId && r.requestedBy === p.userId,
+      ) ||
       reports.some((report) => report.reporterId === p.userId) ||
       o.documents.some((doc) => doc.driverId === p.driverId);
     if (!permitted) {
@@ -277,7 +262,8 @@ export async function download(p: Principal, id: string) {
     permitted =
       reports.length > 0 || o.documents.some((doc) => doc.driverId === null);
   else if (p.role === "ADMIN" || p.role === "SUPER_ADMIN")
-    permitted = reports.length > 0 || o.documents.length > 0;
+    permitted =
+      reports.length > 0 || o.documents.length > 0 || o.timeEvidence.length > 0;
   if (!permitted) throw new AppError(404, "Datei nicht gefunden.");
   return {
     bytes: await retrieveBytes(o.key),

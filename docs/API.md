@@ -195,3 +195,23 @@ Generic lists support allowlisted `sort` and `dir=asc|desc`; the client shares t
 Document `status=VALID|EXPIRING|EXPIRED` filters match the displayed expiry calculation, using one timestamp per request. Score `status` matches the exact source-defined status string, up to 120 characters, within the selected committed week. Generic statuses use fixed allowlists rather than choices from the current page. Driver vehicle filters intersect with assignment ownership. Planning defaults to the current Berlin week when no week is supplied.
 
 Reports apply `q` to the complete bounded aggregate list, then order and paginate it. The UI CSV link preserves `q`, `week`, `sort` and `dir`, requests page 1 with size 100, and exports all matching report aggregates. It does not export underlying operational records. Accounts, invitations, audit and the staff assignment board retain their specialised contracts.
+
+## Stage 22B — time corrections
+
+`GET /api/v1/time-corrections?page=1&entryPage=1&status=PENDING` returns private, no-store requests (20/page); drivers also receive their completed shift selector (20/page) and latest 100 available personal evidence documents. Admins receive only their tenant's requests; dispatchers are denied.
+
+`POST /api/v1/time-corrections` accepts one strict command, with authenticated live role checks, same-origin validation and mutation rate limiting:
+
+- Driver request: `{action:"request",requestId:<UUID>,entryId,expectedVersion,startAt:<UTC ISO>,endAt:<UTC ISO>,breakMilliseconds:<integer>,reason,evidenceDocumentId:<own document ID or null>}`.
+- Admin decision: `{action:"decide",id:<request UUID>,requestId:<decision UUID>,decision:"APPROVED"|"REJECTED",reason}`.
+
+Reasons require 10–2,000 trimmed characters. Success returns `{id}`. Matching retries are idempotent. Validation errors return 400/422, permission errors 403, inaccessible records 404 and state/version/overlap/identifier conflicts 409. WorkTimeCorrection stores the immutable proposal and final decision; final decisions cannot be amended. Approval resets the working-time approval to SUBMITTED. Evidence continues through the existing private file endpoint. See STAGE-22B.md.
+
+
+## Stage 22C — vehicle inspections
+
+`GET /api/v1/inspections?page=1` returns `{items, page, hasMore, context}` (20 reports per page). Driver context contains own actor ID and open clock entry ID/state, current active assignment ID/plate, and the already-submitted inspection ID if any. Staff context is null; no employee time values are returned. Live membership is required; driver reports are additionally restricted by profile and reporter.
+
+`POST /api/v1/inspections` accepts multipart form data. `metadata` is a strict JSON object: `requestId` UUID, `entryId`, `assignmentId`, integer `odometerKm` (0–9999999), `tyres`, `lights`, `mirrors`, `warnings` (each `OK` or `ISSUE`), boolean `damage`, and trimmed `notes` (0–2000 characters, at least 10 for any issue/damage). File fields: `front`, `rear`, `left`, `right`; `damage` is required only when the metadata damage flag is true. No other/repeated fields are accepted. JPEG/PNG 10 MiB per file, 24 MiB aggregate and existing 25 MiB HTTP envelope.
+
+Only the currently assigned active driver with a RUNNING clock entry can submit. Response `{id, createdAt}` is a receipt, not driving authorization. UUID and canonical metadata/original image hashes define replay identity; exact replay returns the same receipt. One inspection per shift/assignment. Errors: 400 invalid page/form, 403 role/membership/origin, 404 inaccessible shift/assignment, 409 stale assignment/shift or conflicting submission, 413 size limit, 422 invalid input/image, 429 rate limit. Existing `/api/v1/files/:id` provides private image access. No inspection update/delete endpoint exists.

@@ -42,7 +42,7 @@ function xml(text: string) {
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
     parseTagValue: false,
-    processEntities: false,
+    processEntities: true,
     removeNSPrefix: true,
   }).parse(text);
 }
@@ -87,7 +87,7 @@ function checkZip(data: Uint8Array) {
   }
   if (at !== end) bad("Ungültiges ZIP-Verzeichnis.");
 }
-function xlsx(data: Uint8Array): string[][] {
+function xlsx(data: Uint8Array, selected?: string, inspect = false) {
   checkZip(data);
   const entries = new Map<string, string>();
   let total = 0,
@@ -138,85 +138,192 @@ function xlsx(data: Uint8Array): string[][] {
       parsed.set(name, xml(text));
   }
   const workbook = parsed.get("xl/workbook.xml");
-  let sheetName = "xl/worksheets/sheet1.xml";
+  const sheetNodes = workbook
+    ? array<any>(workbook.workbook?.sheets?.sheet)
+    : [];
+  const sheets: string[] = workbook
+    ? sheetNodes.map((s) => String(s["@_name"] ?? ""))
+    : ["Sheet1"];
+  if (
+    !sheets.length ||
+    sheets.length > 100 ||
+    sheets.some((s) => !s || s.length > 100) ||
+    new Set(sheets).size !== sheets.length
+  )
+    bad("Ungültige Tabellenblätter.");
+  const sheet = selected || sheets[0];
+  if (!sheets.includes(sheet)) bad("Ausgewähltes Tabellenblatt fehlt.");
+  let sheetPath = "xl/worksheets/sheet1.xml";
   if (workbook) {
-    const sheet = array<any>(workbook.workbook?.sheets?.sheet)[0];
+    const node = sheetNodes[sheets.indexOf(sheet)];
     const rel = array<any>(
       parsed.get("xl/_rels/workbook.xml.rels")?.Relationships?.Relationship,
-    ).find((r) => r["@_Id"] === sheet?.["@_id"]);
-    if (!rel) bad("Erstes Tabellenblatt fehlt.");
+    ).find((r) => r["@_Id"] === node["@_id"]);
+    if (!rel) bad("Tabellenblatt-Verweis fehlt.");
     const target = String(rel["@_Target"]);
-    if (target.includes("..")) bad("Ungültiger Tabellenpfad.");
-    sheetName = target.startsWith("/") ? target.slice(1) : "xl/" + target;
+    if (target.includes("..") || target.includes("\\") || target.includes(":"))
+      bad("Ungültiger Tabellenpfad.");
+    sheetPath = target.startsWith("/") ? target.slice(1) : "xl/" + target;
   }
-  const worksheet = parsed.get(sheetName)?.worksheet;
-  if (!worksheet) bad("Erstes Tabellenblatt fehlt.");
+  const worksheet = parsed.get(sheetPath)?.worksheet;
+  if (!worksheet) bad("Ausgewähltes Tabellenblatt fehlt.");
+  const nodeText = (node: any): string =>
+    typeof node === "string" ? node : String(node?.["#text"] ?? "");
+  const richText = (node: any): string =>
+    node?.t !== undefined
+      ? nodeText(node.t)
+      : array<any>(node?.r)
+          .map((r) => nodeText(r.t))
+          .join("");
   const shared = array<any>(parsed.get("xl/sharedStrings.xml")?.sst?.si).map(
-    (v) =>
-      typeof v.t === "string"
-        ? v.t
-        : array<any>(v.r)
-            .map((r) => r.t ?? "")
-            .join(""),
+    richText,
   );
-  const rows: string[][] = [];
-  for (const row of array<any>(worksheet.sheetData?.row)) {
-    if (rows.length >= MAX_ROWS + 1) bad("Maximal 5000 Datenzeilen erlaubt.");
-    const values: string[] = [];
-    for (const c of array<any>(row.c)) {
-      const ref = String(c["@_r"] ?? "");
-      const match = /^([A-Z]{1,3})\d+$/.exec(ref);
-      if (!match) bad("Zelladresse fehlt.");
-      let index = 0;
-      for (const char of match[1]) index = index * 26 + char.charCodeAt(0) - 64;
-      if (index > MAX_COLS) bad("Maximal 100 Spalten erlaubt.");
-      let value = c.v ?? "";
-      if (c["@_t"] === "s") {
-        if (!/^\d+$/.test(String(value)) || shared[Number(value)] === undefined)
-          bad("Ungültiger Textverweis.");
-        value = shared[Number(value)];
-      } else if (c["@_t"] === "inlineStr")
-        value =
-          c.is?.t ??
-          array<any>(c.is?.r)
-            .map((r) => r.t ?? "")
-            .join("");
-      else if (c["@_t"] === "e") bad("Excel-Fehlerzellen sind nicht erlaubt.");
-      values[index - 1] = safeCell(value);
+  try {
+    const rows: string[][] = [];
+    for (const row of array<any>(worksheet.sheetData?.row)) {
+      if (rows.length >= MAX_ROWS + 100)
+        bad("Maximal 5000 Datenzeilen erlaubt.");
+      const values: string[] = [];
+      for (const c of array<any>(row.c)) {
+        const ref = String(c["@_r"] ?? "");
+        const match = /^([A-Z]{1,3})\d+$/.exec(ref);
+        if (!match) bad("Zelladresse fehlt.");
+        let index = 0;
+        for (const char of match[1])
+          index = index * 26 + char.charCodeAt(0) - 64;
+        if (index > MAX_COLS) bad("Maximal 100 Spalten erlaubt.");
+        let value = c.v ?? "";
+        if (c["@_t"] === "s") {
+          if (
+            !/^\d+$/.test(String(value)) ||
+            shared[Number(value)] === undefined
+          )
+            bad("Ungültiger Textverweis.");
+          value = shared[Number(value)];
+        } else if (c["@_t"] === "inlineStr") value = richText(c.is);
+        else if (c["@_t"] === "e")
+          bad("Excel-Fehlerzellen sind nicht erlaubt.");
+        values[index - 1] = safeCell(value);
+      }
+      const rowNumber =
+        row["@_r"] === undefined ? rows.length + 1 : Number(row["@_r"]);
+      if (
+        !Number.isInteger(rowNumber) ||
+        rowNumber <= rows.length ||
+        rowNumber > MAX_ROWS + 100
+      )
+        bad("Ungültige oder zu große Zeilennummer.");
+      while (rows.length < rowNumber - 1) rows.push([]);
+      rows.push(
+        Array.from({ length: values.length }, (_, i) => values[i] ?? ""),
+      );
     }
-    rows.push(Array.from({ length: values.length }, (_, i) => values[i] ?? ""));
+    return { table: rows, sheets, sheet, inspectionWarning: "" };
+  } catch (error) {
+    if (!inspect || !(error instanceof AppError)) throw error;
+    return { table: [], sheets, sheet, inspectionWarning: error.message };
   }
-  return rows;
 }
-export function readScoreFile(data: Uint8Array, filename: string): string[][] {
+export interface ScoreSelection {
+  sheet?: string;
+  headerRow?: number;
+  inspect?: boolean;
+}
+export function readScoreWorkbook(
+  data: Uint8Array,
+  filename: string,
+  selection: ScoreSelection = {},
+) {
+  const headerRow = selection.headerRow ?? 1;
+  if (!Number.isInteger(headerRow) || headerRow < 1 || headerRow > 100)
+    bad("Kopfzeile muss zwischen 1 und 100 liegen.");
   if (!data.length || data.length > MAX_FILE)
     bad("Datei muss zwischen 1 Byte und 5 MB groß sein.");
   let rows: string[][];
-  if (/\.xlsx$/i.test(filename)) rows = xlsx(data);
-  else if (/\.csv$/i.test(filename)) {
+  let inspectionWarning = "";
+  let sheets = ["CSV"],
+    sheet = "CSV";
+  if (/\.xlsx$/i.test(filename)) {
+    const book = xlsx(data, selection.sheet, selection.inspect);
+    rows = book.table;
+    inspectionWarning = book.inspectionWarning;
+    sheets = book.sheets;
+    sheet = book.sheet;
+  } else if (/\.csv$/i.test(filename)) {
     try {
       const text = new TextDecoder("utf-8", { fatal: true }).decode(data);
-      const first = text.split(/\r?\n/, 1)[0];
+      const first = text.split(/\r?\n/)[headerRow - 1] ?? "";
       rows = parse(text, {
         bom: true,
         delimiter: first.includes(";") ? ";" : ",",
-        skip_empty_lines: true,
         max_record_size: 200000,
-        relax_column_count: false,
-        to: MAX_ROWS + 2,
+        relax_column_count: true,
+        skip_empty_lines: false,
+        to: MAX_ROWS + 101,
       }).map((r: unknown[]) => r.map(safeCell));
     } catch (e) {
       if (e instanceof AppError) throw e;
       bad("Ungültige UTF-8-CSV-Datei.");
     }
   } else bad("Nur CSV und XLSX werden unterstützt.");
+  rows = rows.slice(headerRow - 1);
   if (
-    rows.length < 2 ||
+    /\.csv$/i.test(filename) &&
+    rows.slice(1).some((r) => r.some(Boolean) && r.length !== rows[0]?.length)
+  )
+    bad("CSV-Datenzeilen müssen zur gewählten Kopfzeile passen.");
+  if (
+    (!selection.inspect && rows.length < 2) ||
     rows.length > MAX_ROWS + 1 ||
     rows.some((r) => r.length > MAX_COLS)
   )
     bad("Datei benötigt 1 bis 5000 Datenzeilen und höchstens 100 Spalten.");
-  return rows;
+  if (selection.sheet && selection.sheet !== sheet)
+    bad("Ausgewähltes Tabellenblatt fehlt.");
+  return { table: rows, sheets, sheet, headerRow, inspectionWarning };
+}
+export function readScoreFile(
+  data: Uint8Array,
+  filename: string,
+  selection: ScoreSelection = {},
+): string[][] {
+  return readScoreWorkbook(data, filename, selection).table;
+}
+export const scoreFields = [
+  "email",
+  "transporterId",
+  "week",
+  "totalScore",
+  "rank",
+  "packages",
+  "bonus",
+  "focusArea",
+  "status",
+];
+const aliases: Record<string, string> = {
+  "transporter id": "transporterId",
+  transporter_id: "transporterId",
+  "driver id": "transporterId",
+  "total score": "totalScore",
+  "pos.": "rank",
+  pakete: "packages",
+  status: "status",
+  woche: "week",
+  "e-mail": "email",
+  fokus: "focusArea",
+  fahrer: "ignore",
+  bonus: "bonus",
+};
+export function suggestMapping(columns: string[]) {
+  return Object.fromEntries(
+    columns.map((c) => [
+      c,
+      scoreFields.includes(c)
+        ? c
+        : (aliases[c.toLowerCase()] ??
+          `metric:${c.startsWith("Kennzahl: ") ? c.slice(10) : c}`),
+    ]),
+  );
 }
 export interface ScoreRow {
   driverId: string;
@@ -249,29 +356,24 @@ export function normalizeRows(
     )
   )
     bad("Spaltennamen müssen eindeutig und nicht leer sein.");
-  const canonical = [
-    "email",
-    "transporterId",
-    "week",
-    "totalScore",
-    "rank",
-    "packages",
-    "bonus",
-    "focusArea",
-    "status",
-  ];
-  const mapping: Record<string, string> = {};
+  const canonical = scoreFields;
+  const mapping: Record<string, string> = Object.create(null);
+  const suggested = suggestMapping(columns);
   for (const c of columns)
-    mapping[c] = requested[c] ?? (canonical.includes(c) ? c : "metric:" + c);
+    mapping[c] = Object.hasOwn(requested, c) ? requested[c] : suggested[c];
   for (const key of Object.keys(requested))
     if (!columns.includes(key))
       bad("Zuordnung enthält eine unbekannte Quellspalte.");
   if (
     Object.values(mapping).some(
       (v) =>
-        !canonical.includes(v) && !/^metric:[\p{L}\p{N} _.-]{1,100}$/u.test(v),
+        v !== "ignore" &&
+        !canonical.includes(v) &&
+        (!/^metric:[\p{L}\p{N} _.,()%/:-]{1,100}$/u.test(v) ||
+          ["__proto__", "prototype", "constructor"].includes(v.slice(7))),
     ) ||
-    new Set(Object.values(mapping)).size !== columns.length
+    new Set(Object.values(mapping).filter((v) => v !== "ignore")).size !==
+      Object.values(mapping).filter((v) => v !== "ignore").length
   )
     bad("Ungültige oder doppelte Spaltenzuordnung.");
   const rows: ScoreRow[] = [],
@@ -293,7 +395,9 @@ export function normalizeRows(
     if (table[i].every((v) => !v.trim())) continue;
     try {
       const cells: Record<string, string> = {};
-      columns.forEach((c, j) => (cells[mapping[c]] = safeCell(table[i][j])));
+      columns.forEach((c, j) => {
+        if (mapping[c] !== "ignore") cells[mapping[c]] = safeCell(table[i][j]);
+      });
       const email = cells.email?.toLowerCase(),
         transporterId = cells.transporterId;
       const matches = [

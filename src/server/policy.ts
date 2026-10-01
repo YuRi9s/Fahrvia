@@ -54,7 +54,8 @@ export function allowed(
   if (p.role === "DISPATCHER")
     return (
       !["score", "score-imports", "invitations", "accounts"].includes(module) &&
-      (operation === "read" || !["categories", "profile"].includes(module))
+      (operation === "read" ||
+        !["categories", "profile", "work-times"].includes(module))
     );
   if (p.role !== "DRIVER" || !p.driverId) return false;
   return operation === "write"

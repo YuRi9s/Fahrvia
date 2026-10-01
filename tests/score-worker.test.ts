@@ -22,3 +22,15 @@ it("parses a score in an isolated process and rejects active content", async () 
     ),
   ).rejects.toThrow("Formeln");
 });
+it("inspects sheets and a title row without creating invalid normalized rows", async () => {
+  const data = new TextEncoder().encode(
+    "Report\ntransporterId,totalScore\nDE1,91\n",
+  );
+  const result = await parseIsolated(data, "score.csv", "2026-W37", {}, [], {
+    inspect: true,
+    headerRow: 2,
+  });
+  expect(result.columns).toEqual(["transporterId", "totalScore"]);
+  expect(result.sheets).toEqual(["CSV"]);
+  expect(result.rows).toEqual([]);
+});

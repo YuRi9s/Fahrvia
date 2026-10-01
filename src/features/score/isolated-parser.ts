@@ -1,6 +1,13 @@
 import { spawn } from "node:child_process";
 import { AppError } from "../../server/policy";
-import type { DriverIdentity, normalizeRows } from "./parser";
+import type { DriverIdentity, normalizeRows, ScoreSelection } from "./parser";
+export type ParsedScore = ReturnType<typeof normalizeRows> & {
+  inspectionWarning: string;
+  sheets: string[];
+  sheet: string;
+  headerRow: number;
+  sample: string[][];
+};
 let active = 0;
 /** CPU-heavy file parsing runs outside the HTTP heap and is terminated after five seconds. */
 export async function parseIsolated(
@@ -9,7 +16,8 @@ export async function parseIsolated(
   week: string,
   mapping: Record<string, string>,
   drivers: DriverIdentity[],
-): Promise<ReturnType<typeof normalizeRows>> {
+  selection: ScoreSelection = {},
+): Promise<ParsedScore> {
   if (active >= 2)
     throw new AppError(
       429,
@@ -27,10 +35,7 @@ export async function parseIsolated(
         },
       );
       let settled = false;
-      const finish = (
-        error?: Error,
-        result?: ReturnType<typeof normalizeRows>,
-      ) => {
+      const finish = (error?: Error, result?: ParsedScore) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -54,7 +59,7 @@ export async function parseIsolated(
       child.once("message", (message: unknown) => {
         const m = message as {
           ok: boolean;
-          result: ReturnType<typeof normalizeRows>;
+          result: ParsedScore;
           message: string;
         };
         if (m.ok) finish(undefined, m.result);
@@ -66,6 +71,7 @@ export async function parseIsolated(
         week,
         mapping,
         drivers,
+        selection,
       });
     });
   } finally {

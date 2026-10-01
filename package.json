@@ -1,6 +1,6 @@
 {
   "name": "fleet-platform",
-  "version": "0.1.22",
+  "version": "0.1.26",
   "private": true,
   "type": "module",
   "engines": {
@@ -31,7 +31,15 @@
     "jobs:reminders": "node --env-file=.env --import tsx scripts/notify-reminders.ts",
     "deploy:check": "node --env-file=.env --import tsx scripts/deploy-check.ts",
     "email:check": "node --env-file=.env --import tsx scripts/check-email.ts",
-    "files:check": "node --env-file=.env --import tsx scripts/check-files.ts"
+    "files:check": "node --env-file=.env --import tsx scripts/check-files.ts",
+    "local:bootstrap": "node scripts/local-cli.mjs bootstrap",
+    "local:dev": "node scripts/local-cli.mjs dev",
+    "db:upgrade": "node scripts/local-cli.mjs upgrade",
+    "db:backup": "node scripts/local-cli.mjs backup",
+    "db:restore": "node scripts/local-cli.mjs restore",
+    "db:status": "node scripts/local-cli.mjs status",
+    "test:local-db": "node --test tests/local/*.test.mjs",
+    "test:local-db:docker": "node --test tests/local/docker.acceptance.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1127.0",

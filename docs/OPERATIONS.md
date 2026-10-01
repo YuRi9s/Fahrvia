@@ -52,3 +52,14 @@ Native PostgreSQL race tests, actual S3/scanner/email delivery, Docker startup, 
 ## Source deployment preflight (Stage 19)
 
 After building the reviewed source, run `npm run deploy:check` with the runtime environment. It checks configuration, build files and migration history in a read-only transaction. After startup behind the real TLS proxy, use `npm run deploy:check -- --probe` for health/readiness/login-page probes. See `STAGE-19.md` for checks, limits and the required disposable native fresh-install/upgrade rehearsal. This stage has not yet passed on a native deployment host.
+
+
+## Stage 22C inspection deployment
+
+Apply `20260924_vehicle_inspections` in the explicit migration job before deploying v0.1.25. Managed local installs use `npm run db:upgrade`; native installations retain Stage 19 role separation. Runtime needs SELECT/INSERT on VehicleInspection and existing photo/object/audit privileges. Do not modify historical migrations or remove immutable-evidence triggers to resolve user editing requests.
+
+Database backups do not include image bytes. Preserve and test restore of the private object store (local development: `.data/files`) with the database. On `inspection_upload_cleanup_deferred`, reconcile stored keys with committed StoredObject rows only after all transactions have settled; this stage deliberately has no automatic orphan deletion. See STAGE-22C.md for upgrade and acceptance steps.
+
+## Stage 14A score workbooks
+
+Before v0.1.26, apply additive `20260925_score_selection` using the migration identity. Managed local installation: `npm run db:upgrade`, then `npm run local:dev`. It adds one nullable metadata column and requires no new database role or secret. Historical imports and migrations are preserved. See `STAGE-14A.md` for import/replacement/export acceptance. PHR/concessions ingestion remains deferred.

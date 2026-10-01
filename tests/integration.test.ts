@@ -230,7 +230,11 @@ it("commits score revisions, scopes driver results, and reverts to prior data", 
   await changeScoreImport(admin, a.id, "commit");
   await expect(previewScore(admin, form(90))).rejects.toThrow("bereits");
   const b = await previewScore(admin, form(92));
-  await changeScoreImport(admin, b.id, "commit");
+  expect(b.replaces?.id).toBe(a.id);
+  await expect(changeScoreImport(admin, b.id, "commit")).rejects.toThrow(
+    "bestätigen",
+  );
+  await changeScoreImport(admin, b.id, "commit", true);
   const list = await listModule(
     driver,
     "score",
@@ -518,4 +522,113 @@ it("filters planning by Berlin midnight with an exclusive next-week boundary", a
   expect("items" in list && list.items).toEqual([
     expect.objectContaining({ id: "calendar-monday" }),
   ]);
+});
+
+it("rejects stale score previews and keeps active scores intact", async () => {
+  const form = (value: number) => {
+    const f = new FormData();
+    f.set("week", "2026-W38");
+    f.set(
+      "file",
+      new File([`transporterId,totalScore\nDE001,${value}\n`], "score.csv"),
+    );
+    return f;
+  };
+  const a = await previewScore(admin, form(10));
+  const b = await previewScore(admin, form(20));
+  await changeScoreImport(admin, a.id, "commit");
+  await expect(changeScoreImport(admin, b.id, "commit", true)).rejects.toThrow(
+    "erneut",
+  );
+  expect(
+    (await database().scoreImport.findUniqueOrThrow({ where: { id: a.id } }))
+      .status,
+  ).toBe("COMMITTED");
+});
+it("exports only active authorized scores with screen filters and rejects revoked membership", async () => {
+  const { exportScores } = await import("../src/features/score/export");
+  const { readScoreFile } = await import("../src/features/score/parser");
+  const db = database();
+  await db.user.create({
+    data: {
+      id: driver.userId,
+      name: "Lena",
+      email: "score-export@example.test",
+    },
+  });
+  const m = await db.membership.create({
+    data: {
+      userId: driver.userId,
+      organizationId: admin.organizationId,
+      role: "DRIVER",
+    },
+  });
+  await db.driverProfile.update({
+    where: { id: driverId },
+    data: { membershipId: m.id },
+  });
+  const other = await db.driverProfile.create({
+    data: {
+      organizationId: admin.organizationId,
+      firstName: "Other",
+      lastName: "Driver",
+      email: "other-export@example.test",
+      transporterId: "DE002",
+    },
+  });
+  const active = await db.scoreImport.findFirstOrThrow({
+    where: { week: "2026-W38", status: "COMMITTED" },
+  });
+  await db.driverScore.create({
+    data: {
+      organizationId: admin.organizationId,
+      importId: active.id,
+      driverId: other.id,
+      week: active.week,
+      totalScore: 99,
+      metrics: {},
+    },
+  });
+  const exported = await exportScores(
+    driver,
+    new URLSearchParams(
+      `week=2026-W38&driverId=${other.id}&organizationId=org-test-b`,
+    ),
+  );
+  const rows = readScoreFile(exported.bytes, "scores.xlsx");
+  expect(rows).toHaveLength(2);
+  expect(rows[1]).toContain("DE001");
+  expect(JSON.stringify(rows)).not.toContain("DE002");
+  const adminExport = await exportScores(
+    admin,
+    new URLSearchParams("week=2026-W38&q=Other"),
+  );
+  expect(readScoreFile(adminExport.bytes, "scores.xlsx")[1]).toContain("DE002");
+  await expect(
+    exportScores({ ...admin, role: "DISPATCHER" }, new URLSearchParams()),
+  ).rejects.toThrow();
+  await db.membership.update({ where: { id: m.id }, data: { active: false } });
+  await expect(
+    exportScores(driver, new URLSearchParams("week=2026-W38")),
+  ).rejects.toThrow("aktiv");
+});
+it("file inspection does not create a draft and saved previews retain sheet selection", async () => {
+  const db = database();
+  const before = await db.scoreImport.count();
+  const f = new FormData();
+  f.set("week", "2026-W39");
+  f.set(
+    "file",
+    new File(["transporterId,totalScore\nDE001,88\n"], "scores.csv"),
+  );
+  f.set("inspect", "true");
+  const inspected = await previewScore(admin, f);
+  expect(inspected.columns).toEqual(["transporterId", "totalScore"]);
+  expect(await db.scoreImport.count()).toBe(before);
+  f.set("inspect", "false");
+  const draft = await previewScore(admin, f);
+  expect(
+    (await db.scoreImport.findUniqueOrThrow({ where: { id: draft.id } }))
+      .selection,
+  ).toEqual({ sheet: "CSV", headerRow: 1 });
 });

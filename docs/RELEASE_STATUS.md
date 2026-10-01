@@ -1,4 +1,12 @@
-# Release status — 0.1.20
+Stage 14A — **v0.1.26**: score worksheet/header selection, saved mappings, explicit weekly replacement and scoped Excel export. Apply the additive migration; see `docs/STAGE-14A.md`. Real-provider workbook and browser acceptance remain pending.
+
+Stage 22C — **v0.1.25**: guided vehicle inspections, required private photos and immutable report history. Apply the additive migration before running; see `docs/STAGE-22C.md`. Browser and native deployment qualification remain pending.
+
+Stage 22B — **v0.1.24**: employee time-correction requests, private document evidence and audited administrator decisions. Includes Stage 22A shift controls and the previously separate local database workflow. Apply the new migration; see `docs/STAGE-22B.md` (`STAGE-22B.md` from this folder). Native Docker/concurrency and browser acceptance remain pending.
+
+# Release status — 0.1.26
+
+Stage 22A (0.1.23) adds driver shift controls, recorded breaks, idempotent commands and private history. New migration required. See `docs/STAGE-22A.md` (or `STAGE-22A.md` from this folder). Stage 22B now adds corrections; inspections follow separately.
 
 Stage 22 (0.1.22) improves mobile navigation accessibility and adds `npm run test:e2e:local`. See `docs/STAGE-22.md` (or `STAGE-22.md` from this folder). Browser execution and deployment acceptance remain pending.
 

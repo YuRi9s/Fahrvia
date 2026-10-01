@@ -62,6 +62,11 @@ export async function mutateOperations(
         } else throw new AppError(422, "Unbekannte Aktion.");
       }
     } else if (module === "work-times") {
+      if (!["ADMIN", "SUPER_ADMIN"].includes(p.role))
+        throw new AppError(
+          403,
+          "Nur Administratoren können Arbeitszeiten bearbeiten.",
+        );
       if (!["create", "update", "approve"].includes(action))
         throw new AppError(422, "Unbekannte Aktion.");
       // Updates and approvals serialize on the entry. Driver locks are ordered so a
@@ -74,6 +79,11 @@ export async function mutateOperations(
         });
         if (!old) throw new AppError(404, "Arbeitszeit nicht gefunden.");
       }
+      if (old?.clockState && action === "update")
+        throw new AppError(
+          409,
+          "Gestempelte Arbeitszeiten können nur über einen geprüften Korrekturantrag geändert werden.",
+        );
       if (action === "approve") {
         if (p.role !== "ADMIN" && p.role !== "SUPER_ADMIN")
           throw new AppError(
@@ -141,7 +151,11 @@ export async function mutateOperations(
               entryId: old!.id,
               actorId: p.userId,
               reason,
-              before: JSON.parse(JSON.stringify(old)) as Prisma.InputJsonValue,
+              before: JSON.parse(
+                JSON.stringify(old, (_key, value) =>
+                  typeof value === "bigint" ? value.toString() : value,
+                ),
+              ) as Prisma.InputJsonValue,
             },
           });
           item = await tx.workTimeEntry.update({
